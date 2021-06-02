@@ -4,6 +4,8 @@
 #include <math.h>   /* pow */
 #include "hash_table.h"
 
+#define ASCII_SIZE 128
+
 typedef struct {
     int lex_i;
     int lex_ip2ek;  /* i plus 2 to the power of k */
@@ -38,8 +40,8 @@ int *create_rank(triplet *triplets, int n) {
 }
 
 int *create_suffix_array(char *txt) {
-    int n = strlen(txt);
-    printf("%d\n", n);
+    uint n = strlen(txt);
+    // printf("%d\n", n);
 
     triplet *triplets = (triplet*) malloc(n * (sizeof (triplet)));
     for (int i = 0; i < n; i++) {
@@ -51,7 +53,8 @@ int *create_suffix_array(char *txt) {
     qsort(triplets, n, sizeof(*triplets), comp);
 
     int k = 0;
-    while ((int)pow(2, k) < n){
+    uint p2k = pow(2, k);
+    while (p2k < n){
         int *rank = create_rank(triplets, n);
         for (int i = 0; i < n; i++){
             triplets[i].lex_i = rank[i];
@@ -60,6 +63,7 @@ int *create_suffix_array(char *txt) {
         }
         qsort(triplets, n, sizeof(*triplets), comp);
         k++;
+        p2k = pow(2, k);
     }
 
     int *suffix_array = (int *) malloc(n * (sizeof (int)));
@@ -70,7 +74,7 @@ int *create_suffix_array(char *txt) {
 }
 
 char *txt2bwt(char *txt) {
-    int n = strlen(txt);
+    uint n = strlen(txt);
     int *suffix_array = create_suffix_array(txt);
     char *bwt = (char*) malloc(n * sizeof (char));
     int i;
@@ -102,26 +106,77 @@ ht_table_t *construct_first(char *bwt) {
     return table;
 }
 
-int main(void) {
-    char original[] = "abaab$";
+uint get_alphabet_size(char *str) {
+    char contains[256];
+    for (uint i=0; i<256; i++) {contains[i] = 0;}
+    for (uint i=0; i<strlen(str); i++) {
+        if (contains[str[i]] == 0) {
+            contains[str[i]] = 1;
+        }
+    }
+    uint asize = 0;
+    for (uint i=0; i<256; i++) {
+        if (contains[i] == 1) {
+            asize++;
+        }
+    }
+    return asize;
+}
 
-    printf("original:\t%s\n", original);
-    int *suffix_array = create_suffix_array(original);
+void print_array(char *array, uint n) {
+    for (uint i=0; i<n; i++) {
+        printf("%d ", array[i]);
+    }
+    printf("\n");
+}
 
-    for (int i=0; i < strlen(original); i++) {
+char *bwt2txt(char *bwt) {
+    char char2index[ASCII_SIZE];
+    for (uint i=0; i<ASCII_SIZE; i++) { char2index[i] = 0; }
+    for (uint i=0; i<strlen(bwt); i++) {
+        if (char2index[bwt[i]] == 0) {
+            char2index[bwt[i]] = 1;
+        }
+    }
+    char n = 0;
+    for (uint i=0; i<ASCII_SIZE; i++) {
+        n += char2index[i];
+        if (char2index[i] == 1) {
+            char2index[i] = n-1;
+        }
+    }
+    printf("n:\t%d\n", n);
+    // print_array(char2index, ASCII_SIZE);
+
+    for (uint i=0; i<strlen(bwt); i++) {
+        printf("%d ", char2index[bwt[i]]);
+    }
+    // ht_table_t *table = construct_first(bwt);
+    // print_map(table);
+
+    return "ajshb";
+}
+
+void print_suffix_array(int *suffix_array, uint n) {
+    for (uint i=0; i < n; i++) {
         printf("%d ", suffix_array[i]);
     }
     printf("\n");
+}
+
+int main(void) {
+    char original[] = "abaab$";
+    printf("original:\t%s\n", original);
+
+    int *suffix_array = create_suffix_array(original);
+    print_suffix_array(suffix_array, strlen(original));
 
     char *bwt = txt2bwt(original);
     printf("bwt:\t%s\n", bwt);
 
-    ht_table_t *table = construct_first(bwt);
-    print_map(table);
-    /* 
     char *reconstructed = bwt2txt(bwt);
     printf("reconstructed:\t%s\n", reconstructed);
-    */
+
 
     return 0;
 }
