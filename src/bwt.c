@@ -2,9 +2,9 @@
 #include <stdio.h>  /* printf */
 #include <string.h> /* strlen */
 #include <math.h>   /* pow */
-#include "hash_table.h"
 
 #define ASCII_SIZE 128
+#define EMPTY (-1)
 
 typedef struct {
     int lex_i;
@@ -85,27 +85,6 @@ char *txt2bwt(char *txt) {
     return bwt;
 }
 
-ht_table_t *construct_first(char *bwt) {
-    ht_table_t *table = create_table(5);
-    ht_item_t *tmp;
-    char key[2];
-    int value;
-
-    key[1] = '\0';
-    for (int i = 0; i < strlen(bwt); i++) {
-        key[0] = bwt[i];
-        tmp = search(table, key);
-        if (tmp == NULL) {
-            insert(table, key, 1);
-        } else {
-            value = ht_item_get_value(tmp);
-            value++;
-            insert(table, key, value);
-        }
-    }
-    return table;
-}
-
 uint get_alphabet_size(char *str) {
     char contains[256];
     for (uint i=0; i<256; i++) {contains[i] = 0;}
@@ -123,64 +102,80 @@ uint get_alphabet_size(char *str) {
     return asize;
 }
 
-void print_array(char *array, uint n) {
-    for (uint i=0; i<n; i++) {
-        printf("%d ", array[i]);
-    }
-    printf("\n");
-}
-
 void uint_array_initialize(uint *array, uint n) {
     for (uint i=0; i<n ; i++) {
         array[i] = 0;
     }
 }
 
-char *get_ctoidx();
-uint *get_first();
-uint *get_ranks();
-
-
-char *bwt2txt(char *bwt) {
-    char char2index[ASCII_SIZE];
-    for (uint i=0; i<ASCII_SIZE; i++) { char2index[i] = 0; }
+char *get_ctoidx(char *bwt) {
+    char *ctoidx = (char *)malloc(ASCII_SIZE * sizeof (*ctoidx));
+    for (uint i=0; i<ASCII_SIZE; i++) { ctoidx[i] = EMPTY; }
     for (uint i=0; i<strlen(bwt); i++) {
-        if (char2index[bwt[i]] == 0) {
-            char2index[bwt[i]] = 1;
+        if (ctoidx[bwt[i]] == EMPTY) {
+            ctoidx[bwt[i]] = 1;
         }
     }
     char n = 0;
     for (uint i=0; i<ASCII_SIZE; i++) {
-        n += char2index[i];
-        if (char2index[i] == 1) {
-            char2index[i] = n-1;
+        if (ctoidx[i] == 1) {
+            ctoidx[i] = n;
+            n++;
         }
     }
+    return ctoidx;
+}
 
-//    uint first[n+1];
-//    uint_array_initialize(first, n+1);
-//
-//    for (uint i=0; i<strlen(bwt); i++) {
-//        printf("%d ", char2index[bwt[i]]);
-//        char c = char2index[bwt[i]];
-//        first[c+1]++;
-//    }
-//    printf("\n");
-//
-//    for (uint i=0; i<n+1; i++) {
-//        printf("%d ", first[i]);
-//    }
-//    printf("\n");
+uint *get_first(char *bwt, const char *ctoidx) {
+    uint l = get_alphabet_size(bwt);
+    uint *first = malloc(sizeof *first * (l+1));
+    uint_array_initialize(first, l+1);
 
-//    uint l = strlen(bwt);
-//    uint rank[strlen(bwt)];
-//    uint_array_initialize(rank, l);
+    for (uint i=0; i<strlen(bwt); i++) {
+        char c = ctoidx[bwt[i]];
+        first[c+1]++;
+    }
 
-    char ctoidx[128];                   // char2index
-    // char idxtoc[3] = {'$', 'a', 'b'};
-    // uint first[4] = {0, 1, 3, 2};   // these should be prefix sums
-    uint first_cumsum[4] = {0, 1, 4, 6};
-    uint rank[6] = {0, 1, 0, 0, 1, 2};
+    for (uint i=1; i<l+1; i++) {
+        first[i] += first[i-1];
+    }
+    return first; // {0, 1, 4, 6}
+}
+
+char *get_idxtoc(char *bwt, const char *ctoidx) {
+    uint l = get_alphabet_size(bwt);
+    char *idxtoc = malloc(sizeof *idxtoc * l);
+    for (uint i=0; i < ASCII_SIZE; i++) {
+        if (ctoidx[i] != EMPTY) {
+            idxtoc[ctoidx[i]] = i;
+        }
+    }
+    return idxtoc; // {'$', 'a', 'b'}
+}
+
+uint *get_ranks(char *bwt, char *ctoidx) {
+    uint n = strlen(bwt);
+    uint *ranks = malloc(sizeof *ranks * n);
+    uint_array_initialize(ranks, n);
+    char *idxtoc = get_idxtoc(bwt, ctoidx);
+
+    for (uint i=0; i<get_alphabet_size(bwt); i++) {
+        uint rank = 0;
+        for (uint j=0; j<n; j++) {
+            if (bwt[j] == idxtoc[i]) {
+                ranks[j] = rank;
+                rank++;
+            }
+        }
+    }
+    return ranks; // {0, 1, 0, 0, 1, 2}
+};
+
+
+char *bwt2txt(char *bwt) {
+    char *ctoidx = get_ctoidx(bwt);
+    uint *first = get_first(bwt, ctoidx);
+    uint *ranks = get_ranks(bwt, ctoidx);
 
     char *txt = (char*) malloc(strlen(bwt) * sizeof (*txt));
     char next_char = '$';
@@ -188,14 +183,14 @@ char *bwt2txt(char *bwt) {
 
     for (uint i=0; i < strlen(bwt); i++) {
         txt[strlen(bwt) - 1 - i] = next_char;
-        cur_pos = first_cumsum[char2index[next_char]] + rank[cur_pos];
+        cur_pos = first[ctoidx[next_char]] + ranks[cur_pos];
         next_char = bwt[cur_pos];
     }
-
     return txt;
 }
 
 void print_suffix_array(int *suffix_array, uint n) {
+    printf("suffix array:\t");
     for (uint i=0; i < n; i++) {
         printf("%d ", suffix_array[i]);
     }
@@ -203,7 +198,7 @@ void print_suffix_array(int *suffix_array, uint n) {
 }
 
 int main(void) {
-    char original[] = "abaab$";
+    char original[] = "abaababbabbababbabbabshshhhsnajkahb$";
     printf("original:\t%s\n", original);
 
     int *suffix_array = create_suffix_array(original);
