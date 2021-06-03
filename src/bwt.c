@@ -130,6 +130,17 @@ void print_array(char *array, uint n) {
     printf("\n");
 }
 
+void uint_array_initialize(uint *array, uint n) {
+    for (uint i=0; i<n ; i++) {
+        array[i] = 0;
+    }
+}
+
+char *get_ctoidx();
+uint *get_first();
+uint *get_ranks();
+
+
 char *bwt2txt(char *bwt) {
     char char2index[ASCII_SIZE];
     for (uint i=0; i<ASCII_SIZE; i++) { char2index[i] = 0; }
@@ -145,16 +156,43 @@ char *bwt2txt(char *bwt) {
             char2index[i] = n-1;
         }
     }
-    printf("n:\t%d\n", n);
-    // print_array(char2index, ASCII_SIZE);
 
-    for (uint i=0; i<strlen(bwt); i++) {
-        printf("%d ", char2index[bwt[i]]);
+//    uint first[n+1];
+//    uint_array_initialize(first, n+1);
+//
+//    for (uint i=0; i<strlen(bwt); i++) {
+//        printf("%d ", char2index[bwt[i]]);
+//        char c = char2index[bwt[i]];
+//        first[c+1]++;
+//    }
+//    printf("\n");
+//
+//    for (uint i=0; i<n+1; i++) {
+//        printf("%d ", first[i]);
+//    }
+//    printf("\n");
+
+//    uint l = strlen(bwt);
+//    uint rank[strlen(bwt)];
+//    uint_array_initialize(rank, l);
+
+    char ctoidx[128];                   // char2index
+    // char idxtoc[3] = {'$', 'a', 'b'};
+    // uint first[4] = {0, 1, 3, 2};   // these should be prefix sums
+    uint first_cumsum[4] = {0, 1, 4, 6};
+    uint rank[6] = {0, 1, 0, 0, 1, 2};
+
+    char *txt = (char*) malloc(strlen(bwt) * sizeof (*txt));
+    char next_char = '$';
+    uint cur_pos = 0;
+
+    for (uint i=0; i < strlen(bwt); i++) {
+        txt[strlen(bwt) - 1 - i] = next_char;
+        cur_pos = first_cumsum[char2index[next_char]] + rank[cur_pos];
+        next_char = bwt[cur_pos];
     }
-    // ht_table_t *table = construct_first(bwt);
-    // print_map(table);
 
-    return "ajshb";
+    return txt;
 }
 
 void print_suffix_array(int *suffix_array, uint n) {
@@ -176,7 +214,6 @@ int main(void) {
 
     char *reconstructed = bwt2txt(bwt);
     printf("reconstructed:\t%s\n", reconstructed);
-
 
     return 0;
 }
