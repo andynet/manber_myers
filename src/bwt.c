@@ -197,9 +197,26 @@ void print_suffix_array(int *suffix_array, uint n) {
     printf("\n");
 }
 
+char *read_input(const char *filename) {
+    FILE *fp = fopen(filename, "r");
+    if (fp == NULL) {
+        perror("Error while opening file.");
+        exit(EXIT_FAILURE);
+    }
+
+    char buffer[128];
+    fgets(buffer, 128, fp);
+
+    size_t n = strlen(buffer) + 1;
+    char *result = malloc(sizeof *result * n);
+    strncpy(result, buffer, n);
+    return result;
+}
+
 int main(void) {
-    char original[] = "abaababbabbababbabbabshshhhsnajkahb$";
-    printf("original:\t%s\n", original);
+
+    char *original = read_input("../input.txt");
+    printf("original:\t%s\t%lu\n", original, strlen(original));
 
     int *suffix_array = create_suffix_array(original);
     print_suffix_array(suffix_array, strlen(original));
